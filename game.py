@@ -1,4 +1,6 @@
 import sys
+from os import kill
+
 import pygame
 import random
 
@@ -68,6 +70,7 @@ class Tile(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.pos = pos_x, pos_y
+        self.n = 0
         self.start_x = self.rect.x
         self.start_y = self.rect.y
 
@@ -79,9 +82,9 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.pos = (pos_x, pos_y)
+        self.n = 0
         self.alw_pos_x = self.rect.x + 25
         self.alw_pos_y = self.rect.y + 25
-        print(self.pos)
 
     def move(self, posx, posy, keys):
         global speed_x, speed_y
@@ -119,12 +122,13 @@ class Player(pygame.sprite.Sprite):
 
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y):
+    def __init__(self, pos_x, pos_y, n):
         super().__init__(enemy_group, all_sprites)
         self.image = enemy_image
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
-        self.pos = (pos_x, pos_y)
+        self.pos = [pos_x, pos_y]
+        self.n = n
         all_enemy.append(self.pos)
 
 
@@ -145,7 +149,7 @@ def generate_level(level):
                 Tile('wall', x, y)
             elif level[y][x] == 'x':
                 Tile('empty', x, y)
-                Enemy(x, y)
+                Enemy(x, y, x * y)
             elif level[y][x] == '@':
                 Tile('empty', x, y)
                 new_player = Player(x, y)
@@ -171,7 +175,7 @@ camera = Camera()
 
 
 def game_screen():
-    global speed_x, speed_y, keys
+    global speed_x, speed_y, keys, g
     screen_rect = screen.get_rect()
     player, level_x, level_y = generate_level(level)
     player_l = pygame.Rect(screen_rect.centerx, screen_rect.centery, 0, 0)
@@ -180,6 +184,7 @@ def game_screen():
     speed_x = 0
     speed_y = 0
     length = 50
+    g = 0
     while True:
 
         screen.fill((0, 0, 0))
@@ -239,17 +244,42 @@ def game_screen():
             elif speed_y == -10:
                 i[-1][1] += speed_y
 
+        for i in enemy_group:
+            if g == 25:
+                print(i.pos)
+                if level[i.pos[1] - 1][i.pos[0]] != '#' and player.pos[1] < i.pos[1]:
+                    i.rect.y -= 50
+                    i.pos[1] -= 1
+                elif level[i.pos[1] + 1][i.pos[0]] != '#' and player.pos[1] > i.pos[1]:
+                    i.rect.y += 50
+                    i.pos[1] += 1
+                elif level[i.pos[1]][i.pos[0] + 1] != '#' and player.pos[0] > i.pos[0]:
+                    i.rect.x += 50
+                    i.pos[0] += 1
+                elif level[i.pos[1]][i.pos[0] - 1] != '#' and player.pos[0] < i.pos[0]:
+                    i.rect.x -= 50
+                    i.pos[0] -= 1
+                g = 0
+            else:
+                g += 1
+        
         for i in all_bullets:
-            p = level[int((int(i[2][1]) + int(i[1][1])) / 50)][int((int(i[2][0]) + int(i[1][0])) / 50)]
-            if p != '#' and p != 'x':
+            p = level[int((int(i[2][1]) + int(i[1][1])) // 50)][int((int(i[2][0]) + int(i[1][0])) // 50)]
+            for j in enemy_group.sprites():
+                if (j.rect.x <= int(i[0][0]) <= j.rect.x + 50) and (j.rect. y <= int(i[0][1]) <= j.rect.y + 50):
+                    print(j.rect.x)
+                    print(j.rect.y)
+                    print(int(i[2][0]))
+                    print(int(i[2][1]))
+                    enemy_group.remove(j)
+                    all_sprites.remove(j)
+                    #lev = list(level[int((int(i[2][1]) + int(i[1][1])) / 50)])
+                    #lev[int((int(i[2][0]) + int(i[1][0])) / 50)] = '.'
+                    #level[int((int(i[2][1]) + int(i[1][1])) / 50)] = lev
+                    break
+            if p != '#':
                 i[0] += i[1]
                 i[2] += i[1]
-            elif p == 'x':
-                for j in enemy_group.sprites():
-                    if j.rect.x < int(i[2][0]) > j.rect.x and j.rect.y < int(i[2][1]) > j.rect.y:
-                        j.kill()
-                        print(level[int((int(i[2][1]) + int(i[1][1])) / 50)])
-                        level[int((int(i[2][1]) + int(i[1][1])) / 50)].split()[int((int(i[2][0]) + int(i[1][0])) / 50)] = '.'
 
             elif p == '#':
                 all_bullets.pop(all_bullets.index(i))
