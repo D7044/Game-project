@@ -149,7 +149,7 @@ def generate_level(level):
                 Tile('wall', x, y)
             elif level[y][x] == 'x':
                 Tile('empty', x, y)
-                Enemy(x, y, x * y)
+                Enemy(x, y, 6)
             elif level[y][x] == '@':
                 Tile('empty', x, y)
                 new_player = Player(x, y)
@@ -267,12 +267,12 @@ def game_screen():
             p = level[int((int(i[2][1]) + int(i[1][1])) // 50)][int((int(i[2][0]) + int(i[1][0])) // 50)]
             for j in enemy_group.sprites():
                 if (j.rect.x <= int(i[0][0]) <= j.rect.x + 50) and (j.rect. y <= int(i[0][1]) <= j.rect.y + 50):
-                    print(j.rect.x)
-                    print(j.rect.y)
-                    print(int(i[2][0]))
-                    print(int(i[2][1]))
-                    enemy_group.remove(j)
-                    all_sprites.remove(j)
+                    print('////')
+                    j.n -= 1
+                    if j.n == 0:
+                        enemy_group.remove(j)
+                        all_sprites.remove(j)
+                    all_bullets.pop(all_bullets.index(i))
                     #lev = list(level[int((int(i[2][1]) + int(i[1][1])) / 50)])
                     #lev[int((int(i[2][0]) + int(i[1][0])) / 50)] = '.'
                     #level[int((int(i[2][1]) + int(i[1][1])) / 50)] = lev
