@@ -5,7 +5,7 @@ import pygame_widgets
 from pygame_widgets.button import Button
 
 FPS = 50
-
+level_num = 0
 all_bullets = []
 all_enemy = []
 speed = 0
@@ -20,15 +20,24 @@ player = None
 def opening():
     # fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     # screen.blit(fon, (0, 0))
-    font = pygame.font.SysFont('serif', 100)
-    string_rendered = font.render("Name", 1, pygame.Color('white'))
+    # НАЗВАНИЕ
+    string_rendered = pygame.font.SysFont('serif', 100).render("Name", 1, pygame.Color('white'))
     intro_rect = string_rendered.get_rect()
     intro_rect.centerx, intro_rect.centery = WIDTH // 2, 50
     screen.blit(string_rendered, intro_rect)
-    start_btn = Button(screen, WIDTH // 2 - 100, 150, 200, 100, text='Start', margin=20,
+    #  НОМЕР УРОВНЯ
+    string_rendered = pygame.font.SysFont('serif', 50).render(f"Level {level_num}", 1, pygame.Color('white'))
+    intro_rect = string_rendered.get_rect()
+    intro_rect.centerx, intro_rect.centery = WIDTH // 2, 300
+    screen.blit(string_rendered, intro_rect)
+    #  Кнопка старт
+    start_btn = Button(screen, WIDTH // 4 - 100, 350, 175, 75, text='Start', margin=20,
                        font=pygame.font.SysFont('serif', 50), inactiveColour=(255, 250, 250),
                        hoverColour=(175, 0, 0), radius=20, onClick=game_screen)
-
+    #  Кнопка правила (доделать)
+    rules_btn = Button(screen, WIDTH // 4 * 3 - 100, 350, 175, 75, text='Rules', margin=20,
+                       font=pygame.font.SysFont('serif', 50), inactiveColour=(255, 250, 250),
+                       hoverColour=(175, 0, 0), radius=20, onClick=lambda: print(' '))
 
 
 def load_image(name, colorkey=None):
