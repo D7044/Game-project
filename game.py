@@ -1,8 +1,8 @@
 import sys
 from os import kill
-
 import pygame
-import random
+import pygame_widgets
+from pygame_widgets.button import Button
 
 FPS = 50
 
@@ -15,6 +15,20 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 player = None
+
+
+def opening():
+    # fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    # screen.blit(fon, (0, 0))
+    font = pygame.font.SysFont('serif', 100)
+    string_rendered = font.render("Name", 1, pygame.Color('white'))
+    intro_rect = string_rendered.get_rect()
+    intro_rect.centerx, intro_rect.centery = WIDTH // 2, 50
+    screen.blit(string_rendered, intro_rect)
+    start_btn = Button(screen, WIDTH // 2 - 100, 150, 200, 100, text='Start', margin=20,
+                       font=pygame.font.SysFont('serif', 50), inactiveColour=(255, 250, 250),
+                       hoverColour=(175, 0, 0), radius=20, onClick=game_screen)
+
 
 
 def load_image(name, colorkey=None):
@@ -31,12 +45,17 @@ def start_screen():
     screen.fill((0, 0, 0))
 
     while True:
-        for event in pygame.event.get():
+        events = pygame.event.get()
+        for event in events:
+            opening()
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                return game_screen()
+            # то что ниже уже не нужно, запуск через opening() (56 строка)
+            # elif event.type == pygame.KEYDOWN or \
+            #         event.type == pygame.MOUSEBUTTONDOWN:
+            #     return game_screen()
+        pygame_widgets.update(events)
+        pygame.display.update()
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -186,7 +205,6 @@ def game_screen():
     length = 50
     g = 0
     while True:
-
         screen.fill((0, 0, 0))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
