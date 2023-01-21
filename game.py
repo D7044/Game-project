@@ -5,7 +5,7 @@ import pygame_widgets
 from pygame_widgets.button import Button
 
 FPS = 50
-level_num = 0
+level_num = 0 # для обозначения уровня, будет выводиться в начале
 all_bullets = []
 all_enemy = []
 speed = 0
