@@ -1,10 +1,12 @@
 import sys
-
 import pygame
+import pygame_widgets
+from pygame_widgets.button import Button
 
 FPS = 50
-
+level_num = 0
 all_bullets = []
+all_enemy = []
 all_enemy_bullets = []
 speed = 0
 WIDTH = 700
@@ -13,6 +15,29 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 player = None
+
+
+def opening():
+    # fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    # screen.blit(fon, (0, 0))
+    # НАЗВАНИЕ
+    string_rendered = pygame.font.SysFont('serif', 100).render("Name", 1, pygame.Color('white'))
+    intro_rect = string_rendered.get_rect()
+    intro_rect.centerx, intro_rect.centery = WIDTH // 2, 50
+    screen.blit(string_rendered, intro_rect)
+    #  НОМЕР УРОВНЯ
+    string_rendered = pygame.font.SysFont('serif', 50).render(f"Level {level_num}", 1, pygame.Color('white'))
+    intro_rect = string_rendered.get_rect()
+    intro_rect.centerx, intro_rect.centery = WIDTH // 2, 300
+    screen.blit(string_rendered, intro_rect)
+    #  Кнопка старт
+    start_btn = Button(screen, WIDTH // 4 - 100, 350, 175, 75, text='Start', margin=20,
+                       font=pygame.font.SysFont('serif', 50), inactiveColour=(255, 250, 250),
+                       hoverColour=(175, 0, 0), radius=20, onClick=game_screen)
+    #  Кнопка правила (доделать)
+    rules_btn = Button(screen, WIDTH // 4 * 3 - 100, 350, 175, 75, text='Rules', margin=20,
+                       font=pygame.font.SysFont('serif', 50), inactiveColour=(255, 250, 250),
+                       hoverColour=(175, 0, 0), radius=20, onClick=lambda: print(' '))
 
 
 def load_image(name, colorkey=None):
@@ -29,12 +54,19 @@ def start_screen():
     screen.fill((0, 0, 0))
 
     while True:
-        for event in pygame.event.get():
+        events = pygame.event.get()
+        for event in events:
+            opening()
             if event.type == pygame.QUIT:
                 terminate()
+            # то что ниже уже не нужно, запуск через opening() (56 строка)
+            # elif event.type == pygame.KEYDOWN or \
+            #         event.type == pygame.MOUSEBUTTONDOWN:
+            #     return game_screen()
             elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                return game_screen()
+                     event.type == pygame.MOUSEBUTTONDOWN:
+                 return game_screen()
+        pygame.display.update()
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -58,7 +90,8 @@ enemy_image = load_image('bad.png')
 level = load_level('level.txt')
 tile_images = {
     'wall': load_image('box.png'),
-    'empty': load_image('pol.png')
+    'empty': load_image('pol.png'),
+    'noway': load_image('noway.png')
 }
 player_image = load_image('default.png')
 
@@ -95,21 +128,20 @@ class Player(pygame.sprite.Sprite):
         self.pos = posx, posy
 
         if keys[pygame.K_d]:
-            if level[posy][posx + 1] != '#':
+            if level[posy][posx + 1] != '#' or level[posy][posx + 1] != '!':
                 speed_x = 10
 
         if keys[pygame.K_a]:
-            if level[posy][posx - 1] != '#':
+            if level[posy][posx - 1] != '#' or level[posy][posx - 1] != '!':
                 speed_x = -10
 
         if keys[pygame.K_s]:
-            if level[posy + 1][posx] != '#':
+            if level[posy + 1][posx] != '#' or level[posy + 1][posx] != '!':
                 speed_y = 10
 
         if keys[pygame.K_w]:
-            if level[posy - 1][posx] != '#':
+            if level[posy - 1][posx] != '#' or level[posy - 1][posx] != '!':
                 speed_y = -10
-        print(speed_x, speed_y)
         #обновление позиции игрока
         if self.alw_pos_x % 50 == 0:
             posx = self.alw_pos_x // 50
@@ -121,19 +153,19 @@ class Player(pygame.sprite.Sprite):
             posy = self.alw_pos_y // 50
         self.pos = posx, posy
 
-        if level[posy][posx + 1] == '#' and keys[pygame.K_d]:
+        if (level[posy][posx + 1] == '#' or level[posy][posx + 1] == '!') and keys[pygame.K_d]:
             speed_x = 0
             #self.alw_pos_x += 25
             #self.rect.x += 5
-        elif level[posy][posx - 1] == '#' and keys[pygame.K_a]:
+        elif (level[posy][posx - 1] == '#' or level[posy][posx - 1] == '!') and keys[pygame.K_a]:
             speed_x = 0
             #self.alw_pos_x -= 25
             #self.rect.x -= 5
-        if level[posy - 1][posx] == '#' and keys[pygame.K_w]:
+        if (level[posy - 1][posx] == '#' or level[posy - 1][posx] == '!') and keys[pygame.K_w]:
             speed_y = 0
             #self.alw_pos_y -= 25
             #self.rect.y -= 5
-        elif level[posy + 1][posx] == '#' and keys[pygame.K_s]:
+        elif (level[posy + 1][posx] == '#' or level[posy + 1][posx] == '!') and keys[pygame.K_s]:
             speed_y = 0
             #self.alw_pos_y += 25
             #self.rect.y += 5
@@ -196,6 +228,9 @@ def generate_level(level):
                 Tile('empty', x, y)
             elif level[y][x] == '#':
                 Tile('wall', x, y)
+            elif level[y][x] == '!':
+                Tile('empty', x, y)
+                Tile('noway', x, y)
             elif level[y][x] == 'p':
                 Tile('empty', x, y)
                 Shoot_enemy(x, y, 6)
@@ -241,7 +276,6 @@ def game_screen():
     h = 0
     g = 0
     while True:
-
         screen.fill((0, 0, 0))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -320,16 +354,20 @@ def game_screen():
         #движение врагов
         for i in enemy_group:
             if g == 50:
-                if level[i.pos[1] - 1][i.pos[0]] != '#' and player.pos[1] < i.pos[1]:
+                if level[i.pos[1] - 1][i.pos[0]] != '#' and\
+                        player.pos[1] < i.pos[1] and level[i.pos[1] - 1][i.pos[0]] != '!':
                     i.rect.y -= 50
                     i.pos[1] -= 1
-                elif level[i.pos[1] + 1][i.pos[0]] != '#' and player.pos[1] > i.pos[1]:
+                elif level[i.pos[1] + 1][i.pos[0]] != '#' and\
+                        player.pos[1] > i.pos[1] and level[i.pos[1] + 1][i.pos[0]] != '!':
                     i.rect.y += 50
                     i.pos[1] += 1
-                elif level[i.pos[1]][i.pos[0] + 1] != '#' and player.pos[0] > i.pos[0]:
+                elif level[i.pos[1]][i.pos[0] + 1] != '#' and\
+                        player.pos[0] > i.pos[0] and level[i.pos[1]][i.pos[0] + 1] != '!':
                     i.rect.x += 50
                     i.pos[0] += 1
-                elif level[i.pos[1]][i.pos[0] - 1] != '#' and player.pos[0] < i.pos[0]:
+                elif level[i.pos[1]][i.pos[0] - 1] != '#' and\
+                        player.pos[0] < i.pos[0] and level[i.pos[1]][i.pos[0] - 1] != '!':
                     i.rect.x -= 50
                     i.pos[0] -= 1
                 g = 0
@@ -338,23 +376,26 @@ def game_screen():
 
         for i in mete_group:
             if g2 == 15:
-                print(i.pos)
-                if level[i.pos[1] - 1][i.pos[0] + 1] != '#' and player.pos[1] < i.pos[1]:
+                if (level[i.pos[1] - 1][i.pos[0] + 1] != '#' and level[i.pos[1] - 1][i.pos[0] + 1] != '!')\
+                        and player.pos[1] < i.pos[1]:
                     i.rect.y -= 50
                     i.pos[1] -= 1
                     i.rect.x += 50
                     i.pos[0] += 1
-                elif level[i.pos[1] + 1][i.pos[0] - 1] != '#' and player.pos[1] > i.pos[1]:
+                elif (level[i.pos[1] + 1][i.pos[0] - 1] != '#' and level[i.pos[1] + 1][i.pos[0] - 1] != '!')\
+                        and player.pos[1] > i.pos[1]:
                     i.rect.y += 50
                     i.pos[1] += 1
                     i.rect.x -= 50
                     i.pos[0] -= 1
-                elif level[i.pos[1] + 1][i.pos[0] + 1] != '#' and player.pos[0] > i.pos[0]:
+                elif (level[i.pos[1] + 1][i.pos[0] + 1] != '#' and level[i.pos[1] + 1][i.pos[0] + 1] != '!')\
+                        and player.pos[0] > i.pos[0]:
                     i.rect.x += 50
                     i.pos[0] += 1
                     i.rect.y += 50
                     i.pos[1] += 1
-                elif level[i.pos[1] - 1][i.pos[0] - 1] != '#' and player.pos[0] < i.pos[0]:
+                elif (level[i.pos[1] - 1][i.pos[0] - 1] != '#' and level[i.pos[1] - 1][i.pos[0] - 1] != '!')\
+                        and player.pos[0] < i.pos[0]:
                     i.rect.x -= 50
                     i.pos[0] -= 1
                     i.rect.y -= 50
@@ -386,7 +427,6 @@ def game_screen():
             p = level[int((int(i[2][1]) + int(i[1][1])) // 50)][int((int(i[2][0]) + int(i[1][0])) // 50)]
             for j in all_enemy.sprites():
                 if (j.rect.x <= int(i[0][0]) <= j.rect.x + 50) and (j.rect. y <= int(i[0][1]) <= j.rect.y + 50):
-                    print('////')
                     j.health -= 1
                     if j.health == 0:
                         if j in enemy_group:
@@ -399,21 +439,21 @@ def game_screen():
                         all_sprites.remove(j)
                     all_bullets.pop(all_bullets.index(i))
                     break
-            if p != '#':
+            if p != '#' and p != '!':
                 i[0] += i[1]
                 i[2] += i[1]
 
-            elif p == '#':
+            elif p == '#' or p == '!':
                 all_bullets.pop(all_bullets.index(i))
 
         for i in all_enemy_bullets:
             p = level[int((int(i[2][1]) + int(i[1][1])) // 50)][int((int(i[2][0]) + int(i[1][0])) // 50)]
 
-            if p != '#':
+            if p != '#' and p != '!':
                 i[0] += i[1]
                 i[2] += i[1]
 
-            elif p == '#':
+            elif p == '#' or p == '!':
                 all_enemy_bullets.pop(all_enemy_bullets.index(i))
 
         camera.update(player)
@@ -433,9 +473,25 @@ def game_screen():
             pos_y = int(i[0].y)
             pygame.draw.circle(screen, pygame.Color('green'), (pos_x, pos_y), 5)
 
+        f = 0
+        lives = 0
+        for i in list(reversed(level)):
+            if '!' in i and f == 1 and lives == 1:
+                print(i)
+                print(list(reversed(level)).index(i))
+                i.replace('!', '.')
+                lives = 0
+                f = 0
+            elif '!' in i and f == 0:
+                f = 1
+            elif '!' in i and f == 1:
+                f = 0
+            if f == 1 and 'x' in i or 'p' in i or 'o' in i:
+                lives = 1
         pygame.display.flip()
         clock.tick(FPS)
         pygame.event.pump()
 
 
+print(list(reversed(level)))
 start_screen()
