@@ -80,13 +80,14 @@ def load_level(filename):
 
 speed_x = 0
 speed_y = 0
-enemy_image = load_image('bad.png')
 level = load_level('level.txt')
 tile_images = {
     'wall': load_image('box.png'),
     'empty': load_image('trava.png')
 }
-player_image = load_image('default.png')
+enemy_image = load_image('bad.png')
+player_image = load_image('data/mHero_.png')
+player_image = pygame.transform.scale(player_image, (384, 288))
 
 tile_width = tile_height = 50
 
@@ -106,13 +107,79 @@ class Tile(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
-        self.image = player_image
+        self.stay = 0
+        self.go = 0
+        self.d = 'r'
+        self.dam = 0
+
+        self.stayr_fr, self.stayl_fr = [], []
+        self.right_fr, self.left_fr = [], []
+        self.damager_fr, self.damagel_fr = [], []
+        self.frames = [self.stayr_fr, self.stayl_fr, self.right_fr,
+                       self.left_fr, self.damager_fr, self.damagel_fr]
+
+        self.cut_sheet(player_image, 8, 6)
+        self.cur_frame = 0
+        self.image = self.stayr_fr[self.cur_frame]
+
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.pos = (pos_x, pos_y)
         self.n = 0
         self.alw_pos_x = self.rect.x + 25
         self.alw_pos_y = self.rect.y + 25
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in [0, 1, 2, 4]:
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                if j == 0:
+                    if i < 4:
+                        self.stayr_fr.append(sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)))
+                    else:
+                        self.stayl_fr.append(sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)))
+                if j == 1 or j == 2:
+                    if i < 4:
+                        self.right_fr.append(sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)))
+                    else:
+                        self.left_fr.append(sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)))
+                if j == 4:
+                    if i < 4:
+                        self.damager_fr.append(sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)))
+                    else:
+                        self.damagel_fr.append(sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)))
+
+    def animate_action(self):
+        self.stay = 0
+        if self.d == 'r':
+            self.go = (self.go + 1) % len(self.right_fr)
+            self.image = self.right_fr[self.go]
+        else:
+            self.go = (self.go + 1) % len(self.left_fr)
+            self.image = self.left_fr[self.go]
+
+    def animate_stay(self):
+        self.go = 0
+        if self.d == 'r':
+            self.image = self.stayr_fr[0]
+        else:
+            self.image = self.stayl_fr[0]
+
+    def animate_damage(self):
+        if self.d == 'r':
+            self.d = (self.go + 1) % len(self.damager_fr)
+            self.image = self.damager_fr[self.d]
+        else:
+            self.d = (self.go + 1) % len(self.damagel_fr)
+            self.image = self.damagel_fr[self.d]
 
     def move(self, posx, posy, keys):
         global speed_x, speed_y
@@ -245,21 +312,29 @@ def game_screen():
                 player.rect.x += speed_x
                 player.alw_pos_x += speed_x
                 player.move(player.pos[0], player.pos[1], keys)
+            player.d = 'r'
+            player.animate_action()
         elif speed_x == -10:
             if (player.alw_pos_x + 25) % 50 != 0 or level[player.pos[1]][player.pos[0] - 1] != '#':
                 player.rect.x += speed_x
                 player.alw_pos_x += speed_x
                 player.move(player.pos[0], player.pos[1], keys)
+            player.d = 'l'
+            player.animate_action()
         elif speed_y == 10:
             if (player.alw_pos_y - 25) % 50 != 0 or level[player.pos[1] + 1][player.pos[0]] != '#':
                 player.rect.y += speed_y
                 player.alw_pos_y += speed_y
                 player.move(player.pos[0], player.pos[1], keys)
+            player.animate_action()
         elif speed_y == -10:
             if (player.alw_pos_y + 25) % 50 != 0 or level[player.pos[1] - 1][player.pos[0]] != '#':
                 player.rect.y += speed_y
                 player.alw_pos_y += speed_y
                 player.move(player.pos[0], player.pos[1], keys)
+            player.animate_action()
+        else:
+            player.animate_stay()
 
         for i in all_bullets:
             if speed_x == 10:
