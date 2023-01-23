@@ -18,17 +18,9 @@ player = None
 
 
 def opening():
-    # fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
-    # screen.blit(fon, (0, 0))
-    # НАЗВАНИЕ
-    string_rendered = pygame.font.SysFont('serif', 100).render("Name", 1, pygame.Color('white'))
+    string_rendered = pygame.font.SysFont('serif', 150).render("Dangeon", 1, pygame.Color('white'))
     intro_rect = string_rendered.get_rect()
-    intro_rect.centerx, intro_rect.centery = WIDTH // 2, 50
-    screen.blit(string_rendered, intro_rect)
-    #  НОМЕР УРОВНЯ
-    string_rendered = pygame.font.SysFont('serif', 50).render(f"Level {level_num}", 1, pygame.Color('white'))
-    intro_rect = string_rendered.get_rect()
-    intro_rect.centerx, intro_rect.centery = WIDTH // 2, 300
+    intro_rect.centerx, intro_rect.centery = WIDTH // 2, 100
     screen.blit(string_rendered, intro_rect)
     #  Кнопка старт
     start_btn = Button(screen, WIDTH // 4 - 100, 350, 175, 75, text='Start', margin=20,
@@ -59,13 +51,10 @@ def start_screen():
             opening()
             if event.type == pygame.QUIT:
                 terminate()
-            # то что ниже уже не нужно, запуск через opening() (56 строка)
-            # elif event.type == pygame.KEYDOWN or \
-            #         event.type == pygame.MOUSEBUTTONDOWN:
-            #     return game_screen()
             elif event.type == pygame.KEYDOWN or \
                      event.type == pygame.MOUSEBUTTONDOWN:
                  return game_screen()
+        pygame_widgets.update(events)
         pygame.display.update()
         pygame.display.flip()
         clock.tick(FPS)
@@ -83,19 +72,19 @@ def load_level(filename):
 #все спрайты
 speed_x = 0
 speed_y = 0
-boss_image = load_image('boss.png')
+boss_image = load_image('dragon_.png')
 noway = load_image('noway.png')
 non_empty = load_image('non_empty.png')
-mete_image = load_image('mete.png')
-shoot_enemy_image = load_image('shoot_enemy.png')
-enemy_image = load_image('bad.png')
+mete_image = load_image('skeleton_.png')
+shoot_enemy_image = load_image('necromancer_.png')
+enemy_image = load_image('goblin_.png')
 level = load_level('level.txt')
 tile_images = {
     'wall': load_image('box.png'),
     'empty': load_image('pol.png'),
     'noway': load_image('noway.png')
 }
-player_image = load_image('default.png')
+player_image = load_image('mHero_.png')
 
 tile_width = tile_height = 50
 
@@ -116,13 +105,84 @@ class Tile(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
-        self.image = player_image
+        self.stay = 0
+        self.go = 0
+        self.d = 'r'
+
+        self.stayr_fr, self.stayl_fr = [], []
+        self.right_fr, self.left_fr = [], []
+        self.damager_fr, self.damagel_fr = [], []
+        self.frames = [self.stayr_fr, self.stayl_fr, self.right_fr,
+                       self.left_fr, self.damager_fr, self.damagel_fr]
+
+        self.cut_sheet(player_image, 8, 6)
+        self.cur_frame = 0
+        self.image = self.stayr_fr[self.cur_frame]
+
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.pos = (pos_x, pos_y)
         self.n = 0
         self.alw_pos_x = self.rect.x + 25
         self.alw_pos_y = self.rect.y + 25
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in [0, 1, 2, 4]:
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                if j == 0:
+                    if i < 4:
+                        self.stayr_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                    else:
+                        self.stayl_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                if j == 1 or j == 2:
+                    if i < 4:
+                        self.right_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                    else:
+                        self.left_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                if j == 4 and i in [1, 2, 5, 6]:
+                    if i < 4:
+                        self.damager_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                    else:
+                        self.damagel_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+
+    def animate_action(self):
+        self.stay = 0
+        if self.d == 'r':
+            self.go = (self.go + 1) % len(self.right_fr)
+            self.image = self.right_fr[self.go]
+        else:
+            self.go = (self.go + 1) % len(self.left_fr)
+            self.image = self.left_fr[self.go]
+
+    def animate_stay(self):
+        self.go = 0
+        if self.d == 'r':
+            self.image = self.stayr_fr[0]
+        else:
+            self.image = self.stayl_fr[0]
+
+    def animate_damage(self):
+        if self.d == 'r':
+            self.d = (self.go + 1) % len(self.damager_fr)
+            self.image = self.damager_fr[self.d]
+        else:
+            self.d = (self.go + 1) % len(self.damagel_fr)
+            self.image = self.damagel_fr[self.d]
 
     def move(self, posx, posy, keys):
         #передвижение игрока
@@ -187,44 +247,283 @@ class Player(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, n):
         super().__init__(enemy_group, all_enemy, all_sprites)
-        self.image = enemy_image
+        self.go = 0
+        self.d = 'r'
+
+        self.stayr_fr, self.stayl_fr = [], []
+        self.right_fr, self.left_fr = [], []
+        self.damager_fr, self.damagel_fr = [], []
+        self.frames = [self.stayr_fr, self.stayl_fr, self.right_fr,
+                       self.left_fr, self.damager_fr, self.damagel_fr]
+
+        self.cut_sheet(enemy_image, 8, 6)
+        self.cur_frame = 0
+        self.image = self.stayr_fr[self.cur_frame]
+
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.pos = [pos_x, pos_y]
         self.health = n
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in [0, 1, 2, 4]:
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                if j == 0:
+                    if i < 4:
+                        self.stayr_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                    else:
+                        self.stayl_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                if j == 1 or j == 2:
+                    if i < 4:
+                        self.right_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                    else:
+                        self.left_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                if j == 4 and i in [2, 6]:
+                    if i < 4:
+                        self.damager_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                    else:
+                        self.damagel_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+
+    def animate_action(self):
+        if self.d == 'r':
+            self.go = (self.go + 1) % len(self.right_fr)
+            self.image = self.right_fr[self.go]
+        else:
+            self.go = (self.go + 1) % len(self.left_fr)
+            self.image = self.left_fr[self.go]
+
+    def animate_damage(self):
+        if self.d == 'r':
+            self.d = (self.go + 1) % len(self.damager_fr)
+            self.image = self.damager_fr[self.d]
+        else:
+            self.d = (self.go + 1) % len(self.damagel_fr)
+            self.image = self.damagel_fr[self.d]
 
 
 #класс черпа
 class Mete(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, n):
         super().__init__(mete_group, all_enemy, all_sprites)
-        self.image = mete_image
+        self.go = 0
+        self.d = 'r'
+
+        self.stayr_fr, self.stayl_fr = [], []
+        self.right_fr, self.left_fr = [], []
+        self.damager_fr, self.damagel_fr = [], []
+        self.frames = [self.stayr_fr, self.stayl_fr, self.right_fr,
+                       self.left_fr, self.damager_fr, self.damagel_fr]
+
+        self.cut_sheet(mete_image, 8, 7)
+        self.cur_frame = 0
+        self.image = self.stayr_fr[self.cur_frame]
+
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.pos = [pos_x, pos_y]
         self.health = n
         self.vect = 1
 
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in [1, 2, 3, 6]:
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                if j == 1:
+                    if i < 4:
+                        self.stayr_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                    else:
+                        self.stayl_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                if j == 2 or j == 3:
+                    if i < 4:
+                        self.right_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                    else:
+                        self.left_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                if j == 6 and i in [2, 6]:
+                    if i < 4:
+                        self.damager_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                    else:
+                        self.damagel_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+
+    def animate_action(self):
+        if self.d == 'r':
+            self.go = (self.go + 1) % len(self.right_fr)
+            self.image = self.right_fr[self.go]
+        else:
+            self.go = (self.go + 1) % len(self.left_fr)
+            self.image = self.left_fr[self.go]
+
+    def animate_damage(self):
+        if self.d == 'r':
+            self.d = (self.go + 1) % len(self.damager_fr)
+            self.image = self.damager_fr[self.d]
+        else:
+            self.d = (self.go + 1) % len(self.damagel_fr)
+            self.image = self.damagel_fr[self.d]
+
 
 #класс стреляющего
 class Shoot_enemy(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, n):
         super().__init__(shoot_enemy_group, all_enemy, all_sprites)
-        self.image = shoot_enemy_image
+        self.go = 0
+        self.d = 'r'
+
+        self.stayr_fr, self.stayl_fr = [], []
+        self.right_fr, self.left_fr = [], []
+        self.damager_fr, self.damagel_fr = [], []
+        self.frames = [self.stayr_fr, self.stayl_fr, self.right_fr,
+                       self.left_fr, self.damager_fr, self.damagel_fr]
+
+        self.cut_sheet(shoot_enemy_image, 8, 5)
+        self.cur_frame = 0
+        self.image = self.stayr_fr[self.cur_frame]
+
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.pos = [pos_x, pos_y]
         self.health = n
 
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in [2, 3]:
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                if j == 2:
+                    if i < 4:
+                        self.stayr_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                    else:
+                        self.stayl_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                if j == 3 and i in [1, 2, 5, 6]:
+                    if i < 4:
+                        self.damager_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+                    else:
+                        self.damagel_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (50, 50)))
+
+    def animate_action(self):
+        if self.d == 'r':
+            self.go = (self.go + 1) % len(self.stayr_fr)
+            self.image = self.stayr_fr[self.go]
+        else:
+            self.go = (self.go + 1) % len(self.stayl_fr)
+            self.image = self.stayl_fr[self.go]
+
+    def animate_damage(self):
+        if self.d == 'r':
+            self.d = (self.go + 1) % len(self.damager_fr)
+            self.image = self.damager_fr[self.d]
+        else:
+            self.d = (self.go + 1) % len(self.damagel_fr)
+            self.image = self.damagel_fr[self.d]
+
 
 class Boss(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(boss_group, all_sprites)
-        self.image = boss_image
+        self.go = 0
+        self.d = 'r'
+
+        self.stayr_fr, self.stayl_fr = [], []
+        self.right_fr, self.left_fr = [], []
+        self.damager_fr, self.damagel_fr = [], []
+        self.frames = [self.stayr_fr, self.stayl_fr, self.right_fr,
+                       self.left_fr, self.damager_fr, self.damagel_fr]
+
+        self.cut_sheet(boss_image, 8, 7)
+        self.cur_frame = 0
+        self.image = self.stayr_fr[self.cur_frame]
+
         self.rect = self.image.get_rect().move(
             tile_width * pos_x - 25, tile_height * pos_y - 25)
         self.pos = [pos_x, pos_y]
         self.health = 50
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in [0, 1, 2, 5]:
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                if j == 0:
+                    if i < 4:
+                        self.stayr_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (100, 100)))
+                    else:
+                        self.stayl_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (100, 100)))
+                if j == 1 or j == 2:
+                    if i < 4:
+                        self.right_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (100, 100)))
+                    else:
+                        self.left_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (100, 100)))
+                if j == 5 and i in [2, 6]:
+                    if i < 4:
+                        self.damager_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (100, 100)))
+                    else:
+                        self.damagel_fr.append(pygame.transform.scale(
+                            sheet.subsurface(pygame.Rect(
+                            frame_location, self.rect.size)), (100, 100)))
+
+    def animate_action(self):
+        if self.d == 'r':
+            self.go = (self.go + 1) % len(self.right_fr)
+            self.image = self.right_fr[self.go]
+        else:
+            self.go = (self.go + 1) % len(self.left_fr)
+            self.image = self.left_fr[self.go]
+
+    def animate_damage(self):
+        if self.d == 'r':
+            self.d = (self.go + 1) % len(self.damager_fr)
+            self.image = self.damager_fr[self.d]
+        else:
+            self.d = (self.go + 1) % len(self.damagel_fr)
+            self.image = self.damagel_fr[self.d]
 
 
 
@@ -324,10 +623,15 @@ def game_screen():
             player.rect.x += speed_x
             player.alw_pos_x += speed_x
             player.move(player.pos[0], player.pos[1], keys)
+            player.d = 'r' if speed_x > 0 else 'l'
+            player.animate_action()
         else:
             player.rect.y += speed_y
             player.alw_pos_y += speed_y
             player.move(player.pos[0], player.pos[1], keys)
+            player.animate_action()
+        if speed_x == 0 and speed_y == 0:
+            player.animate_stay()
 
         #движение снарядов в зависимости от движения игрока
         for i in all_bullets:
@@ -377,7 +681,8 @@ def game_screen():
 
                     position = pygame.math.Vector2(start3)
 
-                    speed = distance.normalize() * 8
+                    speed = distance.normalize() * 8 # !!!!! иногда при игре просто игра вырубается с ошибкой
+                    # о том что distance = 0, а normalize() не может взять из 0 значение # что то в этом роде
 
                     onmap = [boss.pos[0] * 50 + 25, boss.pos[1] * 50 + 25]
 
@@ -385,6 +690,7 @@ def game_screen():
                     print(speed)
 
                 if b == 17:
+                    boss.animate_action()
                     b = 0
                     if level[boss.pos[1] - 1][boss.pos[0]] == '.' and player.pos[1] < boss.pos[1]:
                         boss.rect.y -= 50
@@ -395,14 +701,17 @@ def game_screen():
                     elif level[boss.pos[1]][boss.pos[0] + 1] == '.' and player.pos[0] > boss.pos[0]:
                         boss.rect.x += 50
                         boss.pos[0] += 1
+                        boss.d = 'r'
                     elif level[boss.pos[1]][boss.pos[0] - 1] == '.' and player.pos[0] < boss.pos[0]:
                         boss.rect.x -= 50
                         boss.pos[0] -= 1
+                        boss.d = 'l'
                 b += 1
 
         #движение врагов
         for i in enemy_group:
             if g == 40:
+                i.animate_action()
                 if level[i.pos[1] - 1][i.pos[0]] == '.' and player.pos[1] < i.pos[1]:
                     i.rect.y -= 50
                     i.pos[1] -= 1
@@ -412,35 +721,42 @@ def game_screen():
                 elif level[i.pos[1]][i.pos[0] + 1] == '.' and player.pos[0] > i.pos[0]:
                     i.rect.x += 50
                     i.pos[0] += 1
+                    i.d = 'r'
                 elif level[i.pos[1]][i.pos[0] - 1] == '.' and player.pos[0] < i.pos[0]:
                     i.rect.x -= 50
                     i.pos[0] -= 1
+                    i.d = 'l'
                 g = 0
             else:
                 g += 1
 
         for i in mete_group:
             if g2 == 15:
+                i.animate_action()
                 if level[i.pos[1] - 1][i.pos[0] + 1] == '.' and player.pos[1] < i.pos[1]:
                     i.rect.y -= 50
                     i.pos[1] -= 1
                     i.rect.x += 50
                     i.pos[0] += 1
+                    i.d = 'r'
                 elif level[i.pos[1] + 1][i.pos[0] - 1] == '.' and player.pos[1] > i.pos[1]:
                     i.rect.y += 50
                     i.pos[1] += 1
                     i.rect.x -= 50
                     i.pos[0] -= 1
+                    i.d = 'l'
                 elif level[i.pos[1] + 1][i.pos[0] + 1] == '.' and player.pos[0] > i.pos[0]:
                     i.rect.x += 50
                     i.pos[0] += 1
                     i.rect.y += 50
                     i.pos[1] += 1
+                    i.d = 'r'
                 elif level[i.pos[1] - 1][i.pos[0] - 1] == '.' and player.pos[0] < i.pos[0]:
                     i.rect.x -= 50
                     i.pos[0] -= 1
                     i.rect.y -= 50
                     i.pos[1] -= 1
+                    i.d = 'l'
                 g2 = 0
             else:
                 g2 += 1
@@ -449,6 +765,8 @@ def game_screen():
         #стрельба врагов
         for j in shoot_enemy_group:
             if h == 20:
+                j.d = 'r' if player.rect.x >= j.rect.x else 'l'
+                j.animate_action()
                 start3 = pygame.math.Vector2(j.rect.x + 25, j.rect.y + 25)
                 distance = (player.rect.x + 25, player.rect.y + 25) - start3
 
@@ -470,6 +788,7 @@ def game_screen():
             for j in all_enemy.sprites():
                 if (j.rect.x <= int(i[0][0]) <= j.rect.x + 50) and (j.rect. y <= int(i[0][1]) <= j.rect.y + 50):
                     j.health -= 1
+                    j.animate_damage()
                     if j.health == 0:
                         if j in enemy_group:
                             enemy_group.remove(j)
@@ -484,6 +803,7 @@ def game_screen():
                     break
             if (boss.rect.x <= int(i[0][0]) <= boss.rect.x + 50) and (boss.rect.y <= int(i[0][1]) <= boss.rect.y + 50):
                 boss.health -= 1
+                boss.animate_damage()
                 if boss.health == 0:
                     if boss in boss_group:
                         boss_group.remove(boss)
@@ -553,5 +873,5 @@ def game_screen():
         pygame.event.pump()
 
 
-print(len(all_enemy.sprites()))
+# print(len(all_enemy.sprites()))
 start_screen()
