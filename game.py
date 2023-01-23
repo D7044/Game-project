@@ -6,10 +6,10 @@ from pygame_widgets.button import Button
 FPS = 50
 level_num = 0
 all_bullets = []
-all_enemy = []
 all_enemy_bullets = []
+all_boss_bullets_default = []
 speed = 0
-WIDTH = 700
+WIDTH = 900
 HEIGHT = 700
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -83,6 +83,8 @@ def load_level(filename):
 #все спрайты
 speed_x = 0
 speed_y = 0
+boss_image = load_image('boss.png')
+noway = load_image('noway.png')
 non_empty = load_image('non_empty.png')
 mete_image = load_image('mete.png')
 shoot_enemy_image = load_image('shoot_enemy.png')
@@ -130,18 +132,23 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_d]:
             if level[posy][posx + 1] != '#' or level[posy][posx + 1] != '!':
                 speed_x = 10
+                speed_y = 0
 
-        if keys[pygame.K_a]:
+        elif keys[pygame.K_a]:
             if level[posy][posx - 1] != '#' or level[posy][posx - 1] != '!':
                 speed_x = -10
+                speed_y = 0
 
-        if keys[pygame.K_s]:
+        elif keys[pygame.K_s]:
             if level[posy + 1][posx] != '#' or level[posy + 1][posx] != '!':
                 speed_y = 10
+                speed_x = 0
 
-        if keys[pygame.K_w]:
+        elif keys[pygame.K_w]:
             if level[posy - 1][posx] != '#' or level[posy - 1][posx] != '!':
                 speed_y = -10
+                speed_x = 0
+
         #обновление позиции игрока
         if self.alw_pos_x % 50 == 0:
             posx = self.alw_pos_x // 50
@@ -161,7 +168,7 @@ class Player(pygame.sprite.Sprite):
             speed_x = 0
             #self.alw_pos_x -= 25
             #self.rect.x -= 5
-        if (level[posy - 1][posx] == '#' or level[posy - 1][posx] == '!') and keys[pygame.K_w]:
+        elif (level[posy - 1][posx] == '#' or level[posy - 1][posx] == '!') and keys[pygame.K_w]:
             speed_y = 0
             #self.alw_pos_y -= 25
             #self.rect.y -= 5
@@ -210,7 +217,19 @@ class Shoot_enemy(pygame.sprite.Sprite):
         self.health = n
 
 
+class Boss(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(boss_group, all_sprites)
+        self.image = boss_image
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x - 25, tile_height * pos_y - 25)
+        self.pos = [pos_x, pos_y]
+        self.health = 50
+
+
+
 #группы спрайтов
+boss_group = pygame.sprite.Group()
 all_enemy = pygame.sprite.Group()
 mete_group = pygame.sprite.Group()
 shoot_enemy_group = pygame.sprite.Group()
@@ -221,6 +240,7 @@ enemy_group = pygame.sprite.Group()
 
 
 def generate_level(level):
+    global boss
     new_player, x, y = None, None, None
     for y in range(len(level)):
         for x in range(len(level[y])):
@@ -230,13 +250,16 @@ def generate_level(level):
                 Tile('wall', x, y)
             elif level[y][x] == '!':
                 Tile('empty', x, y)
-                Tile('noway', x, y)
+                #Tile('noway', x, y)
             elif level[y][x] == 'p':
                 Tile('empty', x, y)
                 Shoot_enemy(x, y, 6)
             elif level[y][x] == 'x':
                 Tile('empty', x, y)
                 Enemy(x, y, 6)
+            elif level[y][x] == '$':
+                Tile('empty', x, y)
+                boss = Boss(x, y)
             elif level[y][x] == 'o':
                 Tile('empty', x, y)
                 Mete(x, y, 1)
@@ -244,7 +267,7 @@ def generate_level(level):
                 Tile('empty', x, y)
                 new_player = Player(x, y)
 
-    return new_player, x, y
+    return new_player, x, y, boss
 
 
 class Camera:
@@ -265,9 +288,9 @@ camera = Camera()
 
 
 def game_screen():
-    global speed_x, speed_y, keys, g, h, g2
+    global speed_x, speed_y, keys, g, h, g2, all_boss_top_bullets
     screen_rect = screen.get_rect()
-    player, level_x, level_y = generate_level(level)
+    player, level_x, level_y, boss = generate_level(level)
     player_l = pygame.Rect(screen_rect.centerx, screen_rect.centery, 0, 0)
     start = pygame.math.Vector2(player_l.center)
     speed_x = 0
@@ -275,6 +298,7 @@ def game_screen():
     g2 = 0
     h = 0
     g = 0
+    b = 0
     while True:
         screen.fill((0, 0, 0))
         for event in pygame.event.get():
@@ -291,39 +315,20 @@ def game_screen():
                 speed = distance.normalize() * 8
 
                 onmap = [player.alw_pos_x, player.alw_pos_y]
-                if len(all_bullets) < 2:
+                if len(all_bullets) < 100:
                     all_bullets.append([position, speed, onmap])
         # передвижение игрока
         keys = pygame.key.get_pressed()
         player.move(player.pos[0], player.pos[1], keys)
-        player.rect.x += speed_x
-        player.alw_pos_x += speed_x
-        player.move(player.pos[0], player.pos[1], keys)
-        player.rect.y += speed_y
-        player.alw_pos_y += speed_y
-        player.move(player.pos[0], player.pos[1], keys)
-        '''
-        if speed_x == 10:
-            if (player.alw_pos_x - 25) % 50 != 0 or level[player.pos[1]][player.pos[0] + 1] != '#':
-                player.rect.x += speed_x
-                player.alw_pos_x += speed_x
-                player.move(player.pos[0], player.pos[1], keys)
-        elif speed_x == -10:
-            if (player.alw_pos_x + 25) % 50 != 0 or level[player.pos[1]][player.pos[0] - 1] != '#':
-                player.rect.x += speed_x
-                player.alw_pos_x += speed_x
-                player.move(player.pos[0], player.pos[1], keys)
-        elif speed_y == 10:
-            if (player.alw_pos_y - 25) % 50 != 0 or level[player.pos[1] + 1][player.pos[0]] != '#':
-                player.rect.y += speed_y
-                player.alw_pos_y += speed_y
-                player.move(player.pos[0], player.pos[1], keys)
-        elif speed_y == -10:
-            if (player.alw_pos_y + 25) % 50 != 0 or level[player.pos[1] - 1][player.pos[0]] != '#':
-                player.rect.y += speed_y
-                player.alw_pos_y += speed_y
-                player.move(player.pos[0], player.pos[1], keys)
-        '''
+        if speed_x != 0:
+            player.rect.x += speed_x
+            player.alw_pos_x += speed_x
+            player.move(player.pos[0], player.pos[1], keys)
+        else:
+            player.rect.y += speed_y
+            player.alw_pos_y += speed_y
+            player.move(player.pos[0], player.pos[1], keys)
+
         #движение снарядов в зависимости от движения игрока
         for i in all_bullets:
             if speed_x == 10:
@@ -351,23 +356,63 @@ def game_screen():
             elif speed_y == -10:
                 i[0][1] -= speed_y
 
+        for i in all_boss_bullets_default:
+            if speed_x == 10:
+                i[0][0] -= speed_x
+
+            elif speed_x == -10:
+                i[0][0] -= speed_x
+
+            if speed_y == 10:
+                i[0][1] -= speed_y
+
+            elif speed_y == -10:
+                i[0][1] -= speed_y
+
+        if boss in boss_group:
+            if player.pos[1] < 21:
+                if b == 15:
+                    start3 = pygame.math.Vector2(boss.rect.x + 50, boss.rect.y + 50)
+                    distance = (player.rect.x + 25, player.rect.y + 25) - start3
+
+                    position = pygame.math.Vector2(start3)
+
+                    speed = distance.normalize() * 8
+
+                    onmap = [boss.pos[0] * 50 + 25, boss.pos[1] * 50 + 25]
+
+                    all_boss_bullets_default.append([position, speed, onmap])
+                    print(speed)
+
+                if b == 17:
+                    b = 0
+                    if level[boss.pos[1] - 1][boss.pos[0]] == '.' and player.pos[1] < boss.pos[1]:
+                        boss.rect.y -= 50
+                        boss.pos[1] -= 1
+                    elif level[boss.pos[1] + 1][boss.pos[0]] == '.' and player.pos[1] > boss.pos[1]:
+                        boss.rect.y += 50
+                        boss.pos[1] += 1
+                    elif level[boss.pos[1]][boss.pos[0] + 1] == '.' and player.pos[0] > boss.pos[0]:
+                        boss.rect.x += 50
+                        boss.pos[0] += 1
+                    elif level[boss.pos[1]][boss.pos[0] - 1] == '.' and player.pos[0] < boss.pos[0]:
+                        boss.rect.x -= 50
+                        boss.pos[0] -= 1
+                b += 1
+
         #движение врагов
         for i in enemy_group:
-            if g == 50:
-                if level[i.pos[1] - 1][i.pos[0]] != '#' and\
-                        player.pos[1] < i.pos[1] and level[i.pos[1] - 1][i.pos[0]] != '!':
+            if g == 40:
+                if level[i.pos[1] - 1][i.pos[0]] == '.' and player.pos[1] < i.pos[1]:
                     i.rect.y -= 50
                     i.pos[1] -= 1
-                elif level[i.pos[1] + 1][i.pos[0]] != '#' and\
-                        player.pos[1] > i.pos[1] and level[i.pos[1] + 1][i.pos[0]] != '!':
+                elif level[i.pos[1] + 1][i.pos[0]] == '.' and player.pos[1] > i.pos[1]:
                     i.rect.y += 50
                     i.pos[1] += 1
-                elif level[i.pos[1]][i.pos[0] + 1] != '#' and\
-                        player.pos[0] > i.pos[0] and level[i.pos[1]][i.pos[0] + 1] != '!':
+                elif level[i.pos[1]][i.pos[0] + 1] == '.' and player.pos[0] > i.pos[0]:
                     i.rect.x += 50
                     i.pos[0] += 1
-                elif level[i.pos[1]][i.pos[0] - 1] != '#' and\
-                        player.pos[0] < i.pos[0] and level[i.pos[1]][i.pos[0] - 1] != '!':
+                elif level[i.pos[1]][i.pos[0] - 1] == '.' and player.pos[0] < i.pos[0]:
                     i.rect.x -= 50
                     i.pos[0] -= 1
                 g = 0
@@ -376,26 +421,22 @@ def game_screen():
 
         for i in mete_group:
             if g2 == 15:
-                if (level[i.pos[1] - 1][i.pos[0] + 1] != '#' and level[i.pos[1] - 1][i.pos[0] + 1] != '!')\
-                        and player.pos[1] < i.pos[1]:
+                if level[i.pos[1] - 1][i.pos[0] + 1] == '.' and player.pos[1] < i.pos[1]:
                     i.rect.y -= 50
                     i.pos[1] -= 1
                     i.rect.x += 50
                     i.pos[0] += 1
-                elif (level[i.pos[1] + 1][i.pos[0] - 1] != '#' and level[i.pos[1] + 1][i.pos[0] - 1] != '!')\
-                        and player.pos[1] > i.pos[1]:
+                elif level[i.pos[1] + 1][i.pos[0] - 1] == '.' and player.pos[1] > i.pos[1]:
                     i.rect.y += 50
                     i.pos[1] += 1
                     i.rect.x -= 50
                     i.pos[0] -= 1
-                elif (level[i.pos[1] + 1][i.pos[0] + 1] != '#' and level[i.pos[1] + 1][i.pos[0] + 1] != '!')\
-                        and player.pos[0] > i.pos[0]:
+                elif level[i.pos[1] + 1][i.pos[0] + 1] == '.' and player.pos[0] > i.pos[0]:
                     i.rect.x += 50
                     i.pos[0] += 1
                     i.rect.y += 50
                     i.pos[1] += 1
-                elif (level[i.pos[1] - 1][i.pos[0] - 1] != '#' and level[i.pos[1] - 1][i.pos[0] - 1] != '!')\
-                        and player.pos[0] < i.pos[0]:
+                elif level[i.pos[1] - 1][i.pos[0] - 1] == '.' and player.pos[0] < i.pos[0]:
                     i.rect.x -= 50
                     i.pos[0] -= 1
                     i.rect.y -= 50
@@ -408,19 +449,20 @@ def game_screen():
         #стрельба врагов
         for j in shoot_enemy_group:
             if h == 20:
-                start2 = pygame.math.Vector2(j.rect.x + 25, j.rect.y + 25)
-                distance = (player.rect.x + 25, player.rect.y + 25) - start2
+                start3 = pygame.math.Vector2(j.rect.x + 25, j.rect.y + 25)
+                distance = (player.rect.x + 25, player.rect.y + 25) - start3
 
-                position = pygame.math.Vector2(start2)
+                position = pygame.math.Vector2(start3)
 
                 speed = distance.normalize() * 8
 
                 onmap = [j.pos[0] * 50 + 25, j.pos[1] * 50 + 25]
 
                 all_enemy_bullets.append([position, speed, onmap])
-                h = 0
-            else:
-                h += 1
+
+        if h == 20:
+            h = 0
+        h += 1
 
         #смерть врагов при попадании и движение снарядов
         for i in all_bullets:
@@ -437,13 +479,19 @@ def game_screen():
                             mete_group.remove(j)
                         all_enemy.remove(j)
                         all_sprites.remove(j)
-                    all_bullets.pop(all_bullets.index(i))
+                    if i in all_bullets:
+                        all_bullets.pop(all_bullets.index(i))
                     break
+            if (boss.rect.x <= int(i[0][0]) <= boss.rect.x + 50) and (boss.rect.y <= int(i[0][1]) <= boss.rect.y + 50):
+                boss.health -= 1
+                if boss.health == 0:
+                    if boss in boss_group:
+                        boss_group.remove(boss)
             if p != '#' and p != '!':
                 i[0] += i[1]
                 i[2] += i[1]
 
-            elif p == '#' or p == '!':
+            elif (p == '#' or p == '!') and i in all_bullets:
                 all_bullets.pop(all_bullets.index(i))
 
         for i in all_enemy_bullets:
@@ -455,43 +503,55 @@ def game_screen():
 
             elif p == '#' or p == '!':
                 all_enemy_bullets.pop(all_enemy_bullets.index(i))
+        for i in all_boss_bullets_default:
+            p = level[int((int(i[2][1]) + int(i[1][1])) // 50)][int((int(i[2][0]) + int(i[1][0])) // 50)]
+            if p != '#' and p != '!':
+                i[0] += i[1]
+                i[2] += i[1]
+            elif (p == '#' or p == '!') and i in all_boss_bullets_default:
+                all_boss_bullets_default.pop(all_boss_bullets_default.index(i))
 
         camera.update(player)
         for sprite in all_sprites:
             camera.apply(sprite)
         tiles_group.draw(screen)
         all_enemy.draw(screen)
+
         player_group.draw(screen)
         #отрисовка снарядов
         for i in all_enemy_bullets:
             pos_x = int(i[0][0])
             pos_y = int(i[0][1])
-            pygame.draw.circle(screen, pygame.Color('yellow'), (pos_x, pos_y), 8)
+            pygame.draw.circle(screen, pygame.Color('yellow'), (pos_x, pos_y), 9)
 
         for i in all_bullets:
             pos_x = int(i[0].x)
             pos_y = int(i[0].y)
-            pygame.draw.circle(screen, pygame.Color('green'), (pos_x, pos_y), 5)
-
-        f = 0
-        lives = 0
-        for i in list(reversed(level)):
-            if '!' in i and f == 1 and lives == 1:
-                print(i)
-                print(list(reversed(level)).index(i))
-                i.replace('!', '.')
-                lives = 0
-                f = 0
-            elif '!' in i and f == 0:
-                f = 1
-            elif '!' in i and f == 1:
-                f = 0
-            if f == 1 and 'x' in i or 'p' in i or 'o' in i:
-                lives = 1
+            pygame.draw.circle(screen, pygame.Color('green'), (pos_x, pos_y), 7)
+        if boss.health != 0:
+            for i in all_boss_bullets_default:
+                pos_x = int(i[0][0])
+                pos_y = int(i[0][1])
+                pygame.draw.circle(screen, pygame.Color('yellow'), (pos_x, pos_y), 15)
+        boss_group.draw(screen)
+        #level[22] = str(level[22]).replace('!', '.')
+        if len(all_enemy) <= 27:
+            level[87] = str(level[87]).replace('!', '.')
+            level[82] = str(level[82]).replace('!', '.')
+        if len(all_enemy) <= 17:
+            level[69] = str(level[69]).replace('!', '.')
+            level[64] = str(level[64]).replace('!', '.')
+        if len(all_enemy) <= 8:
+            level[51] = str(level[51]).replace('!', '.')
+            level[46] = str(level[46]).replace('!', '.')
+        if len(all_enemy) == 0:
+            level[33] = str(level[33]).replace('!', '.')
+        if len(boss_group) == 0:
+            level[5] = str(level[5]).replace('!', '.')
         pygame.display.flip()
         clock.tick(FPS)
         pygame.event.pump()
 
 
-print(list(reversed(level)))
+print(len(all_enemy.sprites()))
 start_screen()
