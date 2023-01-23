@@ -18,20 +18,15 @@ player = None
 
 
 def opening():
-
-    string_rendered = pygame.font.SysFont('serif', 150).render("Dangeon", 1, pygame.Color('white'))
-    intro_rect = string_rendered.get_rect()
-    intro_rect.centerx, intro_rect.centery = WIDTH // 2, 100
-
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     # НАЗВАНИЕ
-    string_rendered = pygame.font.SysFont('serif', 100).render("Dungeon", 1, pygame.Color('Black'))
+    string_rendered = pygame.font.SysFont('serif', 150).render("Dungeon", 1, pygame.Color('Black'))
     intro_rect = string_rendered.get_rect()
-    intro_rect.centerx, intro_rect.centery = WIDTH // 2, 50
+    intro_rect.centerx, intro_rect.centery = WIDTH // 2, 100
     screen.blit(string_rendered, intro_rect)
     #  Кнопка старт
-    start_btn = Button(screen, WIDTH // 2 - 100, 350, 175, 75, text='Start', margin=20,
+    start_btn = Button(screen, WIDTH // 2 - 90, 350, 175, 75, text='Start', margin=20,
                        font=pygame.font.SysFont('serif', 50), inactiveColour=(255, 250, 250),
                        hoverColour=(175, 0, 0), radius=20, onClick=game_screen)
 
@@ -77,15 +72,6 @@ def start_screen():
             opening()
             if event.type == pygame.QUIT:
                 terminate()
-
-            elif event.type == pygame.KEYDOWN or \
-                     event.type == pygame.MOUSEBUTTONDOWN:
-                 return game_screen()
-
-            # то что ниже уже не нужно, запуск через opening() (56 строка)
-            # elif event.type == pygame.KEYDOWN or \
-            #         event.type == pygame.MOUSEBUTTONDOWN:
-            #     return game_screen()
 
         pygame_widgets.update(events)
         pygame.display.update()
@@ -867,6 +853,7 @@ def game_screen():
             p = level[int((int(i[2][1]) + int(i[1][1])) // 50)][int((int(i[2][0]) + int(i[1][0])) // 50)]
             if (player.rect.x <= int(i[0][0]) <= player.rect.x + 50) and (player.rect. y <= int(i[0][1]) <= player.rect.y + 50):
                 player.health -= 1
+                player.animate_damage()
                 if player.health == 0:
                     start_screen()
                     break
