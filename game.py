@@ -18,18 +18,22 @@ player = None
 
 
 def opening():
+
     string_rendered = pygame.font.SysFont('serif', 150).render("Dangeon", 1, pygame.Color('white'))
     intro_rect = string_rendered.get_rect()
     intro_rect.centerx, intro_rect.centery = WIDTH // 2, 100
+
+    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    # НАЗВАНИЕ
+    string_rendered = pygame.font.SysFont('serif', 100).render("Dungeon", 1, pygame.Color('Black'))
+    intro_rect = string_rendered.get_rect()
+    intro_rect.centerx, intro_rect.centery = WIDTH // 2, 50
     screen.blit(string_rendered, intro_rect)
     #  Кнопка старт
-    start_btn = Button(screen, WIDTH // 4 - 100, 350, 175, 75, text='Start', margin=20,
+    start_btn = Button(screen, WIDTH // 2 - 100, 350, 175, 75, text='Start', margin=20,
                        font=pygame.font.SysFont('serif', 50), inactiveColour=(255, 250, 250),
                        hoverColour=(175, 0, 0), radius=20, onClick=game_screen)
-    #  Кнопка правила (доделать)
-    rules_btn = Button(screen, WIDTH // 4 * 3 - 100, 350, 175, 75, text='Rules', margin=20,
-                       font=pygame.font.SysFont('serif', 50), inactiveColour=(255, 250, 250),
-                       hoverColour=(175, 0, 0), radius=20, onClick=lambda: print(' '))
 
 
 def load_image(name, colorkey=None):
@@ -43,17 +47,46 @@ def terminate():
 
 
 def start_screen():
+    global FPS, level_num, all_bullets, all_enemy_bullets, all_boss_bullets_default,\
+        speed, WIDTH, HEIGHT, screen, clock, player, boss_group, all_enemy, all_sprites, mete_group,\
+        tiles_group, player_group, shoot_enemy_group, enemy_group
+    boss_group = pygame.sprite.Group()
+    all_enemy = pygame.sprite.Group()
+    mete_group = pygame.sprite.Group()
+    shoot_enemy_group = pygame.sprite.Group()
+    all_sprites = pygame.sprite.Group()
+    tiles_group = pygame.sprite.Group()
+    player_group = pygame.sprite.Group()
+    enemy_group = pygame.sprite.Group()
     screen.fill((0, 0, 0))
-
+    FPS = 50
+    level_num = 0
+    all_bullets = []
+    all_enemy_bullets = []
+    all_boss_bullets_default = []
+    speed = 0
+    WIDTH = 900
+    HEIGHT = 700
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    clock = pygame.time.Clock()
+    player = None
     while True:
         events = pygame.event.get()
         for event in events:
             opening()
             if event.type == pygame.QUIT:
                 terminate()
+
             elif event.type == pygame.KEYDOWN or \
                      event.type == pygame.MOUSEBUTTONDOWN:
                  return game_screen()
+
+            # то что ниже уже не нужно, запуск через opening() (56 строка)
+            # elif event.type == pygame.KEYDOWN or \
+            #         event.type == pygame.MOUSEBUTTONDOWN:
+            #     return game_screen()
+
         pygame_widgets.update(events)
         pygame.display.update()
         pygame.display.flip()
@@ -123,6 +156,8 @@ class Player(pygame.sprite.Sprite):
             tile_width * pos_x, tile_height * pos_y)
         self.pos = (pos_x, pos_y)
         self.n = 0
+        self.f = 0
+        self.health = 100
         self.alw_pos_x = self.rect.x + 25
         self.alw_pos_y = self.rect.y + 25
 
@@ -239,8 +274,13 @@ class Player(pygame.sprite.Sprite):
 
         if not keys[pygame.K_d] and not keys[pygame.K_a]:
             speed_x = 0
+
         if not keys[pygame.K_w] and not keys[pygame.K_s]:
             speed_y = 0
+        if speed_x != 0 or speed_y != 0:
+            s = pygame.mixer.Sound("шаг.ogg")
+            s.set_volume(0.0078)
+            s.play(0, 110)
 
 
 #класс ходячего
@@ -526,7 +566,6 @@ class Boss(pygame.sprite.Sprite):
             self.image = self.damagel_fr[self.d]
 
 
-
 #группы спрайтов
 boss_group = pygame.sprite.Group()
 all_enemy = pygame.sprite.Group()
@@ -614,8 +653,11 @@ def game_screen():
                 speed = distance.normalize() * 8
 
                 onmap = [player.alw_pos_x, player.alw_pos_y]
-                if len(all_bullets) < 100:
+                if len(all_bullets) < 7:
                     all_bullets.append([position, speed, onmap])
+                    s = pygame.mixer.Sound("выстрел.ogg")
+                    s.set_volume(0.1)
+                    s.play(0, 250)
         # передвижение игрока
         keys = pygame.key.get_pressed()
         player.move(player.pos[0], player.pos[1], keys)
@@ -688,6 +730,9 @@ def game_screen():
 
                     all_boss_bullets_default.append([position, speed, onmap])
                     print(speed)
+                    s = pygame.mixer.Sound("стрельба дракона.ogg")
+                    s.set_volume(0.1)
+                    s.play(0, 0)
 
                 if b == 17:
                     boss.animate_action()
@@ -706,6 +751,10 @@ def game_screen():
                         boss.rect.x -= 50
                         boss.pos[0] -= 1
                         boss.d = 'l'
+
+                    s = pygame.mixer.Sound("драконий шаг.ogg")
+                    s.set_volume(0.1)
+                    s.play(0, 250)
                 b += 1
 
         #движение врагов
@@ -816,7 +865,12 @@ def game_screen():
 
         for i in all_enemy_bullets:
             p = level[int((int(i[2][1]) + int(i[1][1])) // 50)][int((int(i[2][0]) + int(i[1][0])) // 50)]
-
+            if (player.rect.x <= int(i[0][0]) <= player.rect.x + 50) and (player.rect. y <= int(i[0][1]) <= player.rect.y + 50):
+                player.health -= 1
+                if player.health == 0:
+                    start_screen()
+                    break
+                break
             if p != '#' and p != '!':
                 i[0] += i[1]
                 i[2] += i[1]
@@ -825,6 +879,13 @@ def game_screen():
                 all_enemy_bullets.pop(all_enemy_bullets.index(i))
         for i in all_boss_bullets_default:
             p = level[int((int(i[2][1]) + int(i[1][1])) // 50)][int((int(i[2][0]) + int(i[1][0])) // 50)]
+            if (player.rect.x <= int(i[0][0]) <= player.rect.x + 50) and\
+                    (player.rect. y <= int(i[0][1]) <= player.rect.y + 50):
+                player.health -= 2
+                if player.health == 0:
+                    start_screen()
+                    break
+                break
             if p != '#' and p != '!':
                 i[0] += i[1]
                 i[2] += i[1]
@@ -848,30 +909,50 @@ def game_screen():
             pos_x = int(i[0].x)
             pos_y = int(i[0].y)
             pygame.draw.circle(screen, pygame.Color('green'), (pos_x, pos_y), 7)
+        # передвижение игрока
         if boss.health != 0:
             for i in all_boss_bullets_default:
                 pos_x = int(i[0][0])
                 pos_y = int(i[0][1])
                 pygame.draw.circle(screen, pygame.Color('yellow'), (pos_x, pos_y), 15)
         boss_group.draw(screen)
-        #level[22] = str(level[22]).replace('!', '.')
-        if len(all_enemy) <= 27:
+        # level[22] = str(level[22]).replace('!', '.')
+        if len(all_enemy) <= 25 and '!' in level[87] and '!' in level[82]:
             level[87] = str(level[87]).replace('!', '.')
             level[82] = str(level[82]).replace('!', '.')
-        if len(all_enemy) <= 17:
+            s = pygame.mixer.Sound("новый уровень.ogg")
+            s.set_volume(0.1)
+            s.play(0, 0)
+        if len(all_enemy) <= 17 and '!' in level[69] and '!' in level[64]:
             level[69] = str(level[69]).replace('!', '.')
             level[64] = str(level[64]).replace('!', '.')
-        if len(all_enemy) <= 8:
+            s = pygame.mixer.Sound("новый уровень.ogg")
+            s.set_volume(0.1)
+            s.play(0, 0)
+        if len(all_enemy) <= 8 and '!' in level[51] and '!' in level[46]:
             level[51] = str(level[51]).replace('!', '.')
             level[46] = str(level[46]).replace('!', '.')
-        if len(all_enemy) == 0:
+            s = pygame.mixer.Sound("новый уровень.ogg")
+            s.set_volume(0.1)
+            s.play(0, 0)
+        if len(all_enemy) == 0 and '!' in level[33]:
             level[33] = str(level[33]).replace('!', '.')
-        if len(boss_group) == 0:
+            s = pygame.mixer.Sound("новый уровень.ogg")
+            s.set_volume(0.1)
+            s.play(0, 0)
+        if len(boss_group) == 0 and '!' in level[5]:
             level[5] = str(level[5]).replace('!', '.')
+            s = pygame.mixer.Sound("новый уровень.ogg")
+            s.set_volume(0.1)
+            s.play(0, 0)
+        for i in all_enemy:
+            if i.pos[0] == player.pos[0] and i.pos[1] == player.pos[1]:
+                start_screen()
+        if boss.pos[0] == player.pos[0] and boss.pos[1] == player.pos[1]:
+            start_screen()
         pygame.display.flip()
         clock.tick(FPS)
         pygame.event.pump()
 
 
-# print(len(all_enemy.sprites()))
 start_screen()
