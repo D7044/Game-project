@@ -3,8 +3,10 @@ import pygame
 import pygame_widgets
 from pygame_widgets.button import Button
 
+
 FPS = 50
 level_num = 0
+no_way = ['!', '#', 'w', 'l']
 all_bullets = []
 all_enemy_bullets = []
 all_boss_bullets_default = []
@@ -26,7 +28,8 @@ def opening():
     intro_rect.centerx, intro_rect.centery = WIDTH // 2, 100
     screen.blit(string_rendered, intro_rect)
     #  Кнопка старт
-    start_btn = Button(screen, WIDTH // 2 - 90, 350, 175, 75, text='Start', margin=20,
+
+    start_btn = Button(screen, WIDTH // 2 - 90, 350, 175, 75, text='Play', margin=20,
                        font=pygame.font.SysFont('serif', 50), inactiveColour=(255, 250, 250),
                        hoverColour=(175, 0, 0), radius=20, onClick=game_screen)
 
@@ -100,8 +103,10 @@ enemy_image = load_image('goblin_.png')
 level = load_level('level.txt')
 tile_images = {
     'wall': load_image('box.png'),
+    'fwall': load_image('fwall.png'),
     'empty': load_image('pol.png'),
-    'noway': load_image('noway.png')
+    'noway': load_image('noway.png'),
+    'wallx': load_image('wallx.png')
 }
 player_image = load_image('mHero_.png')
 
@@ -143,7 +148,7 @@ class Player(pygame.sprite.Sprite):
         self.pos = (pos_x, pos_y)
         self.n = 0
         self.f = 0
-        self.health = 100
+        self.health = 12
         self.alw_pos_x = self.rect.x + 25
         self.alw_pos_y = self.rect.y + 25
 
@@ -211,22 +216,22 @@ class Player(pygame.sprite.Sprite):
         self.pos = posx, posy
 
         if keys[pygame.K_d]:
-            if level[posy][posx + 1] != '#' or level[posy][posx + 1] != '!':
+            if level[posy][posx + 1] not in no_way:
                 speed_x = 10
                 speed_y = 0
 
         elif keys[pygame.K_a]:
-            if level[posy][posx - 1] != '#' or level[posy][posx - 1] != '!':
+            if level[posy][posx - 1] not in no_way:
                 speed_x = -10
                 speed_y = 0
 
         elif keys[pygame.K_s]:
-            if level[posy + 1][posx] != '#' or level[posy + 1][posx] != '!':
+            if level[posy + 1][posx] not in no_way:
                 speed_y = 10
                 speed_x = 0
 
         elif keys[pygame.K_w]:
-            if level[posy - 1][posx] != '#' or level[posy - 1][posx] != '!':
+            if level[posy - 1][posx] not in no_way:
                 speed_y = -10
                 speed_x = 0
 
@@ -241,19 +246,19 @@ class Player(pygame.sprite.Sprite):
             posy = self.alw_pos_y // 50
         self.pos = posx, posy
 
-        if (level[posy][posx + 1] == '#' or level[posy][posx + 1] == '!') and keys[pygame.K_d]:
+        if (level[posy][posx + 1] in no_way) and keys[pygame.K_d]:
             speed_x = 0
             #self.alw_pos_x += 25
             #self.rect.x += 5
-        elif (level[posy][posx - 1] == '#' or level[posy][posx - 1] == '!') and keys[pygame.K_a]:
+        elif (level[posy][posx - 1] in no_way) and keys[pygame.K_a]:
             speed_x = 0
             #self.alw_pos_x -= 25
             #self.rect.x -= 5
-        elif (level[posy - 1][posx] == '#' or level[posy - 1][posx] == '!') and keys[pygame.K_w]:
+        elif (level[posy - 1][posx] in no_way) and keys[pygame.K_w]:
             speed_y = 0
             #self.alw_pos_y -= 25
             #self.rect.y -= 5
-        elif (level[posy + 1][posx] == '#' or level[posy + 1][posx] == '!') and keys[pygame.K_s]:
+        elif (level[posy + 1][posx] in no_way) and keys[pygame.K_s]:
             speed_y = 0
             #self.alw_pos_y += 25
             #self.rect.y += 5
@@ -499,7 +504,7 @@ class Boss(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x - 25, tile_height * pos_y - 25)
         self.pos = [pos_x, pos_y]
-        self.health = 50
+        self.health = 100
 
     def cut_sheet(self, sheet, columns, rows):
         self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
@@ -572,9 +577,12 @@ def generate_level(level):
                 Tile('empty', x, y)
             elif level[y][x] == '#':
                 Tile('wall', x, y)
+            elif level[y][x] == 'w':
+                Tile('fwall', x, y)
+            elif level[y][x] == 'l':
+                Tile('wallx', x, y)
             elif level[y][x] == '!':
                 Tile('empty', x, y)
-                #Tile('noway', x, y)
             elif level[y][x] == 'p':
                 Tile('empty', x, y)
                 Shoot_enemy(x, y, 6)
@@ -639,7 +647,7 @@ def game_screen():
                 speed = distance.normalize() * 8
 
                 onmap = [player.alw_pos_x, player.alw_pos_y]
-                if len(all_bullets) < 7:
+                if len(all_bullets) < 6:
                     all_bullets.append([position, speed, onmap])
                     s = pygame.mixer.Sound("выстрел.ogg")
                     s.set_volume(0.1)
@@ -842,41 +850,45 @@ def game_screen():
                 if boss.health == 0:
                     if boss in boss_group:
                         boss_group.remove(boss)
-            if p != '#' and p != '!':
+            if p not in no_way:
                 i[0] += i[1]
                 i[2] += i[1]
 
-            elif (p == '#' or p == '!') and i in all_bullets:
+            elif (p in no_way) and i in all_bullets:
                 all_bullets.pop(all_bullets.index(i))
 
         for i in all_enemy_bullets:
             p = level[int((int(i[2][1]) + int(i[1][1])) // 50)][int((int(i[2][0]) + int(i[1][0])) // 50)]
             if (player.rect.x <= int(i[0][0]) <= player.rect.x + 50) and (player.rect. y <= int(i[0][1]) <= player.rect.y + 50):
                 player.health -= 1
+                if i in all_enemy_bullets:
+                    all_enemy_bullets.pop(all_enemy_bullets.index(i))
                 player.animate_damage()
                 if player.health == 0:
                     start_screen()
                     break
                 break
-            if p != '#' and p != '!':
+            if p not in no_way:
                 i[0] += i[1]
                 i[2] += i[1]
 
-            elif p == '#' or p == '!':
+            elif p in no_way:
                 all_enemy_bullets.pop(all_enemy_bullets.index(i))
         for i in all_boss_bullets_default:
             p = level[int((int(i[2][1]) + int(i[1][1])) // 50)][int((int(i[2][0]) + int(i[1][0])) // 50)]
             if (player.rect.x <= int(i[0][0]) <= player.rect.x + 50) and\
                     (player.rect. y <= int(i[0][1]) <= player.rect.y + 50):
                 player.health -= 2
+                if i in all_boss_bullets_default:
+                    all_boss_bullets_default.pop(all_boss_bullets_default.index(i))
                 if player.health == 0:
                     start_screen()
                     break
                 break
-            if p != '#' and p != '!':
+            if p not in no_way:
                 i[0] += i[1]
                 i[2] += i[1]
-            elif (p == '#' or p == '!') and i in all_boss_bullets_default:
+            elif (p in no_way) and i in all_boss_bullets_default:
                 all_boss_bullets_default.pop(all_boss_bullets_default.index(i))
 
         camera.update(player)
@@ -895,13 +907,13 @@ def game_screen():
         for i in all_bullets:
             pos_x = int(i[0].x)
             pos_y = int(i[0].y)
-            pygame.draw.circle(screen, pygame.Color('green'), (pos_x, pos_y), 7)
+            pygame.draw.circle(screen, pygame.Color('blue'), (pos_x, pos_y), 7)
         # передвижение игрока
         if boss.health != 0:
             for i in all_boss_bullets_default:
                 pos_x = int(i[0][0])
                 pos_y = int(i[0][1])
-                pygame.draw.circle(screen, pygame.Color('yellow'), (pos_x, pos_y), 15)
+                pygame.draw.circle(screen, pygame.Color('red'), (pos_x, pos_y), 17)
         boss_group.draw(screen)
         # level[22] = str(level[22]).replace('!', '.')
         if len(all_enemy) <= 25 and '!' in level[87] and '!' in level[82]:
@@ -937,6 +949,15 @@ def game_screen():
                 start_screen()
         if boss.pos[0] == player.pos[0] and boss.pos[1] == player.pos[1]:
             start_screen()
+
+        pygame.font.init()  # you have to call this at the start,
+        # if you want to use this module.
+        my_font = pygame.font.SysFont('Comic Sans MS', 30)
+
+        text_surface = my_font.render(f'hp: {player.health}', False, (0, 0, 255))
+        if player.pos[1] < 5:
+            start_screen()
+        screen.blit(text_surface, (15, 15))
         pygame.display.flip()
         clock.tick(FPS)
         pygame.event.pump()
